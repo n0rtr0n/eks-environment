@@ -1,3 +1,7 @@
+variable "cluster_admin_principal_arn" {
+  description = "ARN of the AWS Principal for the k8s cluster admin"
+  type        = string
+}
 variable "env" {
   description = "Environment"
   type        = string
@@ -28,3 +32,4 @@ variable "region" {
   description = "AWS region"
   type        = string
 }
+

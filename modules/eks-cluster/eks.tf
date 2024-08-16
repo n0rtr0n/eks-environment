@@ -46,3 +46,15 @@ resource "aws_eks_cluster" "this" {
     bootstrap_cluster_creator_admin_permissions = true
   }
 }
+
+# an EKS Access Entry is automatically created for this user through
+# the bootstrap_cluster_creator_admin_permissions above
+resource "aws_eks_access_policy_association" "readonly" {
+  cluster_name  = aws_eks_cluster.this.name
+  policy_arn    = "arn:aws:eks::aws:cluster-access-policy/AmazonEKSClusterAdminPolicy"
+  principal_arn = var.cluster_admin_principal_arn
+
+  access_scope {
+    type = "cluster"
+  }
+}
