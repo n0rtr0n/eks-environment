@@ -13,7 +13,7 @@ data "aws_iam_policy_document" "eks-worker-nodes-assume_role" {
 }
 
 resource "aws_iam_role" "eks-nodes" {
-  name               = "eks-worker-nodes-testing-${local.env}"
+  name               = "eks-worker-nodes-testing-${var.env}"
   assume_role_policy = data.aws_iam_policy_document.eks-worker-nodes-assume_role.json
 }
 
@@ -35,16 +35,16 @@ resource "aws_iam_role_policy_attachment" "eks-worker-nodes-ecr" {
   role       = aws_iam_role.eks-nodes.name
 }
 
-resource "aws_eks_node_group" "testing" {
-  cluster_name    = aws_eks_cluster.testing.name
-  version         = local.eks_version
-  node_group_name = "testing"
+resource "aws_eks_node_group" "this" {
+  cluster_name    = aws_eks_cluster.this.name
+  version         = var.eks_version
+  node_group_name = "${var.eks_cluster_name}-nodes"
   node_role_arn   = aws_iam_role.eks-nodes.arn
 
-  subnet_ids = module.vpc.private_subnets
+  subnet_ids = var.private_subnets
 
   capacity_type  = "ON_DEMAND"
-  instance_types = ["t3.large"]
+  instance_types = var.instance_types
 
   scaling_config {
     desired_size = 1

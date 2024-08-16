@@ -2,12 +2,12 @@ module "vpc" {
   source  = "terraform-aws-modules/vpc/aws"
   version = "~> 5.12.1"
 
-  name = "${local.vpc_name}-${local.env}"
-  cidr = local.vpc_cidr
+  name = "${var.vpc_name}-${var.env}"
+  cidr = var.vpc_cidr
 
-  azs             = local.azs
-  private_subnets = local.private_subnets
-  public_subnets  = local.public_subnets
+  azs             = var.azs
+  private_subnets = var.private_subnets
+  public_subnets  = var.public_subnets
 
   # Internet Gateway for public subnets
   create_igw = true
@@ -25,6 +25,6 @@ module "vpc" {
 
   tags = {
     Terraform   = "true"
-    Environment = local.env
+    Environment = var.env
   }
 }

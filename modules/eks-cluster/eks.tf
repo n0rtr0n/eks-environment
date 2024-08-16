@@ -1,8 +1,3 @@
-locals {
-  cluster_name = "eks-testing-${local.env}"
-  eks_version  = "1.30"
-}
-
 # IAM 
 data "aws_iam_policy_document" "eks-assume_role" {
   statement {
@@ -18,7 +13,7 @@ data "aws_iam_policy_document" "eks-assume_role" {
 }
 
 resource "aws_iam_role" "eks" {
-  name               = "eks-cluster-testing-${local.env}"
+  name               = "${var.eks_cluster_name}-${var.env}"
   assume_role_policy = data.aws_iam_policy_document.eks-assume_role.json
 }
 
@@ -35,15 +30,15 @@ resource "aws_iam_role_policy_attachment" "eks-cluster-vpc" {
 }
 
 # for learning purposes, provisining all resources instead of using all-inclusive module
-resource "aws_eks_cluster" "testing" {
-  name     = local.cluster_name
-  version  = local.eks_version
+resource "aws_eks_cluster" "this" {
+  name     = "${var.eks_cluster_name}-${var.env}"
+  version  = var.eks_version
   role_arn = aws_iam_role.eks.arn
 
   vpc_config {
     endpoint_private_access = false
     endpoint_public_access  = true
-    subnet_ids              = module.vpc.private_subnets
+    subnet_ids              = var.private_subnets
   }
 
   access_config {
