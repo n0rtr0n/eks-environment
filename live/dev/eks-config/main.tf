@@ -1,8 +1,16 @@
 terraform {
   required_providers {
+    aws = {
+      source  = "hashicorp/aws"
+      version = "~> 5.62"
+    }
     kubernetes = {
       source  = "hashicorp/kubernetes"
-      version = ">= 2.0.0"
+      version = "~> 2.16.0"
+    }
+    helm = {
+      source  = "hashicorp/helm"
+      version = "~> 2.15.0"
     }
   }
 }
@@ -20,6 +28,7 @@ data "terraform_remote_state" "eks" {
 locals {
   cluster_name = data.terraform_remote_state.eks.outputs.eks_cluster_name
   env          = "dev"
+  region       = "us-west-2"
 }
 
 data "aws_eks_cluster" "this" {
@@ -31,19 +40,33 @@ data "aws_eks_cluster_auth" "this" {
 }
 
 provider "aws" {
-  region = "us-west-2"
+  region = local.region
 }
 
 # this allows us to authenticate to the k8s cluster directly through the IAM user running the Terraform
 # one less secret to manage!
+# requires AWS CLI
 provider "kubernetes" {
   host                   = data.aws_eks_cluster.this.endpoint
   cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
   exec {
     api_version = "client.authentication.k8s.io/v1beta1"
-    args        = ["eks", "get-token", "--cluster-name", local.cluster_name]
+    args        = ["eks", "get-token", "--cluster-name", data.aws_eks_cluster.this.id]
     command     = "aws"
   }
+}
+
+provider "helm" {
+  kubernetes {
+    host                   = data.aws_eks_cluster.this.endpoint
+    cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
+    exec {
+      api_version = "client.authentication.k8s.io/v1beta1"
+      args        = ["eks", "get-token", "--cluster-name", data.aws_eks_cluster.this.id]
+      command     = "aws"
+    }
+  }
+
 }
 
 resource "kubernetes_namespace" "test" {
@@ -97,5 +120,102 @@ resource "kubernetes_service" "test" {
       port        = 80
       target_port = 80
     }
+  }
+}
+
+resource "helm_release" "metrics_server" {
+  name       = "metrics-server"
+  repository = "https://kubernetes-sigs.github.io/metrics-server/"
+  chart      = "metrics-server"
+  namespace  = "kube-system"
+  version    = "3.12.1"
+
+  values = [file("${path.module}/config/metrics-server.yaml")]
+}
+
+# Pod identity
+
+# for available versions, run:
+# aws eks describe-addon-verions --region us-west-2 --addon-name eks-pod-identity-agent
+resource "aws_eks_addon" "pod_identity" {
+  cluster_name  = data.aws_eks_cluster.this.name
+  addon_name    = "eks-pod-identity-agent"
+  addon_version = "v1.3.0-eksbuild.1"
+}
+
+data "aws_iam_policy_document" "cluster_autoscaler_trust" {
+  statement {
+    effect  = "Allow"
+    actions = ["sts:AssumeRole", "sts:TagSession"]
+    principals {
+      type        = "Service"
+      identifiers = ["pods.eks.amazonaws.com"]
+    }
+  }
+}
+resource "aws_iam_role" "cluster_autoscaler" {
+  name               = "${data.aws_eks_cluster.this.name}-cluster-autoscaler"
+  assume_role_policy = data.aws_iam_policy_document.cluster_autoscaler_trust.json
+}
+
+data "aws_iam_policy_document" "cluster_autoscaler" {
+  statement {
+    effect = "Allow"
+    actions = [
+      "autoscaling:DescribeAutoScalingGroups",
+      "autoscaling:DescribeAutoScalingInstances",
+      "autoscaling:DescribeLaunchConfigurations",
+      "autoscaling:DescribeScalingActivities",
+      "autoscaling:DescribeTags",
+      "autoscaling:SetDesiredCapacity",
+      "autoscaling:TerminateInstanceInAutoScalingGroup",
+      "ec2:DescribeImages",
+      "ec2:DescribeInstanceTypes",
+      "ec2:DescribeLaunchTemplateVersions",
+      "ec2:GetInstanceTypesFromInstanceRequirements",
+      "eks:DescribeNodegroup"
+    ]
+    resources = ["*"] # TODO: restrict actions to more specific resources
+  }
+}
+
+resource "aws_iam_policy" "cluster_autoscaler" {
+  name   = "${data.aws_eks_cluster.this.name}-cluster-autoscaler"
+  policy = data.aws_iam_policy_document.cluster_autoscaler.json
+}
+
+resource "aws_iam_role_policy_attachment" "cluster_autoscaler" {
+  role       = aws_iam_role.cluster_autoscaler.name
+  policy_arn = aws_iam_policy.cluster_autoscaler.arn
+}
+
+resource "aws_eks_pod_identity_association" "cluster_autoscaler" {
+  cluster_name    = data.aws_eks_cluster.this.name
+  namespace       = "kube-system"
+  service_account = "cluster-autoscaler"
+  role_arn        = aws_iam_role.cluster_autoscaler.arn
+}
+
+resource "helm_release" "cluster_autoscaler" {
+  name = "autoscaler"
+
+  repository = "https://kubernetes.github.io/autoscaler"
+  chart      = "cluster-autoscaler"
+  namespace  = "kube-system"
+  version    = "9.37.0"
+
+  set {
+    name  = "rbac.serviceAccount.name"
+    value = "cluster-autoscaler"
+  }
+
+  set {
+    name  = "autoDiscovery.clusterName"
+    value = data.aws_eks_cluster.this.name
+  }
+
+  set {
+    name  = "awsRegion"
+    value = local.region
   }
 }
