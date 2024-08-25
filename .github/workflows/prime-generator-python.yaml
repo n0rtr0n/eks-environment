@@ -28,7 +28,7 @@ jobs:
         with:
           role-to-assume: ${{ secrets.GH_ACTIONS_IAM_ROLE }}
           role-session-name: GHActionsOIDC
-          aws-region: us-east-1
+          aws-region: ${{ env.AWS_REGION }}
 
       - name: Login to Amazon ECR
         id: login-ecr
@@ -39,8 +39,6 @@ jobs:
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
-        with:
-          aws-region: us-west-2
         working-directory: apps/prime-generator-python
         run: |
           docker build -t "$ECR_REGISTRY/$ECR_REPOSITORY:$IMAGE_TAG" .
