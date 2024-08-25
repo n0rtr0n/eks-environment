@@ -4,7 +4,6 @@ module "iam_github_oidc_provider" {
   source = "terraform-aws-modules/iam/aws//modules/iam-github-oidc-provider"
 }
 
-
 data "aws_iam_policy_document" "github_actions_aws_assume_role" {
   statement {
     effect  = "Allow"
@@ -27,12 +26,6 @@ data "aws_iam_policy_document" "github_actions_aws_assume_role" {
 }
 
 data "aws_iam_policy_document" "github_actions_aws" {
-  statement {
-    effect    = "Deny"
-    actions   = ["sts:AssumeRole"]
-    resources = ["*"]
-  }
-
   statement {
     sid    = "PullFromECR"
     effect = "Allow"
