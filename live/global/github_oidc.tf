@@ -75,7 +75,7 @@ resource "aws_iam_policy" "github_actions_aws" {
 }
 
 resource "aws_iam_role" "github_actions_aws" {
-  name               = "GithubActionsAWS"
+  name               = "GHAWS"
   assume_role_policy = data.aws_iam_policy_document.github_actions_aws_assume_role.json
 }
 

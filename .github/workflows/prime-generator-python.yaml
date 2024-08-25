@@ -9,7 +9,7 @@ on:
       - '.github/workflows/**'
 
 env:
-  ECR_REPOSITORY: prime-generator-python
+  ECR_REPOSITORY: prime_generator_python
 
 jobs:
   deploy:
@@ -26,7 +26,7 @@ jobs:
       - name: Configure AWS Credentials
         uses: aws-actions/configure-aws-credentials@v4
         with:
-          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GithubActionsAWS
+          role-to-assume: arn:aws:iam::${{ secrets.AWS_ACCOUNT_ID }}:role/GHAWS
           aws-region: us-east-1
 
       - name: Login to Amazon ECR
