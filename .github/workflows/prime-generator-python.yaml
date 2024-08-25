@@ -10,6 +10,7 @@ on:
 
 env:
   ECR_REPOSITORY: prime_generator_python
+  AWS_REGION: ${{ vars.AWS_REGION }}
 
 jobs:
   deploy:
