@@ -15,7 +15,7 @@ data "aws_iam_policy_document" "github_actions_aws_assume_role" {
     condition {
       test     = "StringLike"
       variable = "token.actions.githubusercontent.com:sub"
-      values   = ["repo:${var.github_repo_name}"]
+      values   = ["repo:${var.github_repo_name}:*"]
     }
     condition {
       test     = "StringEqualsIgnoreCase"
