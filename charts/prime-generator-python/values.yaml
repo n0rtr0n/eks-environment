@@ -1,0 +1,7 @@
+appName: prime-generator-python
+image: 
+  tag: latest
+container:
+  port: 8888
+replicaCount: 1
+

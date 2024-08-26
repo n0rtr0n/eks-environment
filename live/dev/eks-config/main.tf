@@ -25,6 +25,22 @@ data "terraform_remote_state" "eks" {
   }
 }
 
+data "terraform_remote_state" "vpc" {
+  backend = "local"
+
+  config = {
+    path = "../vpc/terraform.tfstate"
+  }
+}
+
+data "terraform_remote_state" "global" {
+  backend = "local"
+
+  config = {
+    path = "../../global/terraform.tfstate"
+  }
+}
+
 locals {
   cluster_name = data.terraform_remote_state.eks.outputs.eks_cluster_name
   env          = "dev"
@@ -217,5 +233,18 @@ resource "helm_release" "cluster_autoscaler" {
   set {
     name  = "awsRegion"
     value = local.region
+  }
+}
+
+resource "helm_release" "prime_generator_python" {
+  name = "prime-generator-python"
+
+  repository = "./../../../charts"
+  chart      = "prime-generator-python"
+  version    = "0.1.0"
+
+  set {
+    name  = "image.name"
+    value = data.terraform_remote_state.global.outputs.prime_generator_python_ecr_url
   }
 }

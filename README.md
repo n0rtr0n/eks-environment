@@ -11,6 +11,7 @@ Playground for testing Terraform configurations for EKS
 ## Setup 
 
 Deployment order:
+* global
 * vpc
 * eks-cluster
 * eks-config

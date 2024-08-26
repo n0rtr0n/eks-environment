@@ -1,0 +1,28 @@
+{{- if not .Values.image.name }}
+{{- fail "Required value 'image.name' is missing from required values" }}
+{{- end }}
+
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: prime-generator-python-deployment
+  labels:
+    app: {{ .Values.appName }}
+    tier: backend
+spec:
+  replicas: {{ .Values.replicaCount }}
+  selector:
+    matchLabels:
+      app: {{ .Values.appName }}
+      tier: backend
+  template:
+    metadata:
+      labels:
+        app: {{ .Values.appName }}
+        tier: backend
+    spec:
+      containers:
+        - name: {{ .Values.appName }}
+          image: "{{ .Values.image.name }}:latest"
+          ports:
+            - containerPort: {{ .Values.container.port }} 
