@@ -2,10 +2,15 @@
 {{- fail "Required value 'image.name' is missing from required values" }}
 {{- end }}
 
+{{- if not .Values.namespace }}
+{{- fail "Required value 'namespace' is missing from required values" }}
+{{- end }}
+
 apiVersion: apps/v1
 kind: Deployment
 metadata:
-  name: prime-generator-python-deployment
+  name: {{ .Values.appName }}
+  namespace: {{ .Values.namespace }}
   labels:
     app: {{ .Values.appName }}
     tier: backend

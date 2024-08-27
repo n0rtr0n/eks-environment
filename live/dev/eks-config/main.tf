@@ -41,10 +41,17 @@ data "terraform_remote_state" "global" {
   }
 }
 
+data "aws_lb_hosted_zone_id" "this" {}
 locals {
-  cluster_name = data.terraform_remote_state.eks.outputs.eks_cluster_name
-  env          = "dev"
-  region       = "us-west-2"
+  cluster_name                       = data.terraform_remote_state.eks.outputs.eks_cluster_name
+  domain_name                        = var.domain_name
+  env                                = "dev"
+  load_balancer_hostname             = kubernetes_ingress_v1.applications.status.0.load_balancer.0.ingress.0.hostname
+  namespace                          = kubernetes_namespace_v1.applications.metadata[0].name
+  region                             = var.region
+  prime_generator_python_app_name    = "prime-generator-python"
+  prime_generator_python_domain_name = "${local.prime_generator_python_app_name}.${local.domain_name}"
+  public_subnet_ids                  = data.terraform_remote_state.vpc.outputs.public_subnet_ids
 }
 
 data "aws_eks_cluster" "this" {
@@ -83,60 +90,6 @@ provider "helm" {
     }
   }
 
-}
-
-resource "kubernetes_namespace" "test" {
-  metadata {
-    name = "nginx"
-  }
-}
-
-resource "kubernetes_deployment" "test" {
-  metadata {
-    name      = "nginx"
-    namespace = kubernetes_namespace.test.metadata.0.name
-  }
-  spec {
-    replicas = 2
-    selector {
-      match_labels = {
-        app = "MyTestApp"
-      }
-    }
-    template {
-      metadata {
-        labels = {
-          app = "MyTestApp"
-        }
-      }
-      spec {
-        container {
-          image = "nginx"
-          name  = "nginx-container"
-          port {
-            container_port = 80
-          }
-        }
-      }
-    }
-  }
-}
-resource "kubernetes_service" "test" {
-  metadata {
-    name      = "nginx"
-    namespace = kubernetes_namespace.test.metadata.0.name
-  }
-  spec {
-    selector = {
-      app = kubernetes_deployment.test.spec.0.template.0.metadata.0.labels.app
-    }
-    type = "NodePort"
-    port {
-      node_port   = 30201
-      port        = 80
-      target_port = 80
-    }
-  }
 }
 
 resource "helm_release" "metrics_server" {
@@ -236,6 +189,12 @@ resource "helm_release" "cluster_autoscaler" {
   }
 }
 
+resource "kubernetes_namespace_v1" "applications" {
+  metadata {
+    name = "applications-${local.env}"
+  }
+}
+
 resource "helm_release" "prime_generator_python" {
   name = "prime-generator-python"
 
@@ -246,5 +205,59 @@ resource "helm_release" "prime_generator_python" {
   set {
     name  = "image.name"
     value = data.terraform_remote_state.global.outputs.prime_generator_python_ecr_url
+  }
+  set {
+    name  = "namespace"
+    value = "applications-${local.env}"
+  }
+}
+
+
+data "aws_route53_zone" "this" {
+  name = local.domain_name
+}
+
+resource "aws_route53_record" "prime_generator_python" {
+  zone_id = data.aws_route53_zone.this.id
+  name    = local.prime_generator_python_domain_name
+  type    = "A"
+
+  alias {
+    name                   = local.load_balancer_hostname
+    zone_id                = data.aws_lb_hosted_zone_id.this.id
+    evaluate_target_health = true
+  }
+}
+
+resource "kubernetes_ingress_v1" "applications" {
+  wait_for_load_balancer = true
+  metadata {
+    name      = local.namespace
+    namespace = local.namespace
+    annotations = {
+      "alb.ingress.kubernetes.io/scheme"  = "internet-facing"
+      "alb.ingress.kubernetes.io/subnets" = join(",", local.public_subnet_ids)
+    }
+  }
+  spec {
+    ingress_class_name = "alb"
+
+    rule {
+      host = local.prime_generator_python_domain_name
+      http {
+        path {
+          backend {
+            service {
+              name = local.prime_generator_python_app_name
+              port {
+                number = 80
+              }
+            }
+          }
+          path      = "/"
+          path_type = "Prefix"
+        }
+      }
+    }
   }
 }
