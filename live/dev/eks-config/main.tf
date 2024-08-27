@@ -229,18 +229,42 @@ resource "aws_route53_record" "prime_generator_python" {
   }
 }
 
+module "acm" {
+  source  = "terraform-aws-modules/acm/aws"
+  version = "~> 4.0"
+
+  domain_name = local.domain_name
+  zone_id     = data.aws_route53_zone.this.id
+
+  validation_method = "DNS"
+
+  subject_alternative_names = [
+    local.prime_generator_python_domain_name,
+  ]
+
+  wait_for_validation = true
+
+  tags = {
+    Name = local.domain_name
+  }
+}
+
 resource "kubernetes_ingress_v1" "applications" {
   wait_for_load_balancer = true
   metadata {
     name      = local.namespace
     namespace = local.namespace
     annotations = {
-      "alb.ingress.kubernetes.io/scheme"  = "internet-facing"
-      "alb.ingress.kubernetes.io/subnets" = join(",", local.public_subnet_ids)
+      "alb.ingress.kubernetes.io/scheme"          = "internet-facing"
+      "alb.ingress.kubernetes.io/subnets"         = join(",", local.public_subnet_ids)
+      "alb.ingress.kubernetes.io/certificate-arn" = module.acm.acm_certificate_arn
     }
   }
   spec {
     ingress_class_name = "alb"
+    tls {
+      hosts = [local.prime_generator_python_domain_name]
+    }
 
     rule {
       host = local.prime_generator_python_domain_name
