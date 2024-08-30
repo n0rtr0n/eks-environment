@@ -89,7 +89,6 @@ provider "helm" {
       command     = "aws"
     }
   }
-
 }
 
 resource "helm_release" "metrics_server" {
@@ -112,7 +111,7 @@ resource "aws_eks_addon" "pod_identity" {
   addon_version = "v1.3.0-eksbuild.1"
 }
 
-data "aws_iam_policy_document" "cluster_autoscaler_trust" {
+data "aws_iam_policy_document" "cluster_autoscaler_assume_role" {
   statement {
     effect  = "Allow"
     actions = ["sts:AssumeRole", "sts:TagSession"]
@@ -124,7 +123,7 @@ data "aws_iam_policy_document" "cluster_autoscaler_trust" {
 }
 resource "aws_iam_role" "cluster_autoscaler" {
   name               = "${data.aws_eks_cluster.this.name}-cluster-autoscaler"
-  assume_role_policy = data.aws_iam_policy_document.cluster_autoscaler_trust.json
+  assume_role_policy = data.aws_iam_policy_document.cluster_autoscaler_assume_role.json
 }
 
 data "aws_iam_policy_document" "cluster_autoscaler" {
@@ -249,15 +248,19 @@ module "acm" {
   }
 }
 
+# The ALB seems to stick around even after the helm release is deleted
+# You may need to manually delete the ALB when tearing down the environment?
 resource "kubernetes_ingress_v1" "applications" {
   wait_for_load_balancer = true
   metadata {
     name      = local.namespace
     namespace = local.namespace
     annotations = {
-      "alb.ingress.kubernetes.io/scheme"          = "internet-facing"
-      "alb.ingress.kubernetes.io/subnets"         = join(",", local.public_subnet_ids)
-      "alb.ingress.kubernetes.io/certificate-arn" = module.acm.acm_certificate_arn
+      "alb.ingress.kubernetes.io/scheme"               = "internet-facing"
+      "alb.ingress.kubernetes.io/subnets"              = join(",", local.public_subnet_ids)
+      "alb.ingress.kubernetes.io/listen-ports"         = "[{\"HTTP\": 80}, {\"HTTPS\":443}]"
+      "alb.ingress.kubernetes.io/actions.ssl-redirect" = "{\"Type\": \"redirect\", \"RedirectConfig\": { \"Protocol\": \"HTTPS\", \"Port\": \"443\", \"StatusCode\": \"HTTP_301\"}}"
+      "alb.ingress.kubernetes.io/certificate-arn"      = module.acm.acm_certificate_arn
     }
   }
   spec {
@@ -269,6 +272,18 @@ resource "kubernetes_ingress_v1" "applications" {
     rule {
       host = local.prime_generator_python_domain_name
       http {
+        path {
+          backend {
+            service {
+              name = "ssl-redirect"
+              port {
+                name = "use-annotation"
+              }
+            }
+          }
+          path      = "/"
+          path_type = "Prefix"
+        }
         path {
           backend {
             service {
@@ -285,3 +300,4 @@ resource "kubernetes_ingress_v1" "applications" {
     }
   }
 }
+
