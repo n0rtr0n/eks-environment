@@ -8,7 +8,7 @@ data "terraform_remote_state" "vpc" {
 
 data "aws_caller_identity" "current" {}
 
-module "eks-cluster" {
+module "eks_cluster" {
   source = "../../../modules/eks-cluster"
 
   # TODO: for now, user creating the EKS cluster via Terraform will be cluster admin as well
