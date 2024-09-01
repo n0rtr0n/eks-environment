@@ -2,6 +2,16 @@ variable "cluster_admin_principal_arn" {
   description = "ARN of the AWS Principal for the k8s cluster admin"
   type        = string
 }
+
+variable "worker_node_scaling_config" {
+  type = map(string)
+  default = {
+    desired_size = 1
+    max_size     = 5
+    min_size     = 1
+  }
+}
+
 variable "env" {
   description = "Environment"
   type        = string

@@ -19,4 +19,9 @@ module "eks_cluster" {
   instance_types              = ["t3.large"]
   private_subnets             = data.terraform_remote_state.vpc.outputs.private_subnet_ids
   region                      = "us-west-2"
+  worker_node_scaling_config = {
+    desired_size = 2
+    max_size     = 5
+    min_size     = 2
+  }
 }
