@@ -1,8 +1,6 @@
 #!/bin/bash
 set -e
 
-command=""
-
 # default options
 opt_auto_approve=0
 
@@ -15,35 +13,26 @@ usage() {
  exit 1
 }
 
-while getopts ":ah" opt; do
-  case $opt in
-    a) opt_auto_approve=1
-      ;;
-    h)
-      usage
-      ;;
-    \?)
-      usage
-    ;;
-  esac
-done
+# Parse positional arguments (command)
+if [ $# -eq 0 ]; then
+  usage
+fi
+
+command="$1"
+shift
 
 shift $((OPTIND -1))
 
 while [ "$1" != "" ]; do
   case $1 in 
-    --auto-approve)
+    -a|--auto-approve)
       opt_auto_approve=1
       shift
       ;;
-    --help)
+    -h|--help)
       usage
       shift
       exit 0
-      ;;
-    up|down)
-      command=$1
-      shift
       ;;
     *)
       usage
