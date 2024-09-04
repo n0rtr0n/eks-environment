@@ -81,7 +81,6 @@ resource "aws_iam_role" "external_secrets" {
   assume_role_policy = data.aws_iam_policy_document.external_secrets_assume_role.json
 }
 
-
 resource "kubernetes_namespace_v1" "secrets" {
   metadata {
     name = local.secrets_namespace

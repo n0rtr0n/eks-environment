@@ -10,9 +10,10 @@ The environment features a complete example with the following resources and pat
 * EKS cluster
 * Github Actions CI/CD build pipeline
 * Secrets Management with external-secrets-operator and SSM Parameter Store
-* EKS Pod Identities for access to AWS resources
+* [EKS Pod Identities](https://docs.aws.amazon.com/eks/latest/userguide/pod-id-how-it-works.html) for access to AWS resources
 * IRSA where Pod Identities are not available, with OIDC from the EKS cluster to AWS 
 * Various patterns of Terraform management
+* [Tailscale subnet router](https://tailscale.com/kb/1019/subnets) for safer access to internal resources
 
 ## Pre-requisites
 
@@ -48,10 +49,6 @@ The `./run.sh` script requires Bash.
 ### Custom Domain Name
 In order to set up this ecosystem with a custom domain, a domain you control that is managed by Route 53 with a public hosted zone is required. This setup is beyond the scope of this repository.
 
-### 
-* AWS user/role with privileges to run Terraform 
-* Valid domain name
-
 ## Setup
 
 A script, `run.sh` is provided to assist with provisioning activities. Follow these instructions to get started:
@@ -64,9 +61,14 @@ github_repo_name = "<github username>/<github repository name>"
 ```
 The default for the above is this repository, `n0rtr0n/eks-environment`, but change it to another if you have forked it.
 
-*live/global/secrets.tfvars*
+*live/dev/eks-config/secrets.tfvars*
 ```
 domain_name = "<your own domain>"
+```
+
+*live/dev/tailscale/subnet-router/secrets.tfvars*
+```
+ssh_public_key = "<your public ssh key>"
 ```
 
 2. *Initialization* - Run the following command, which will initialize the global state, which includes an ECR registry, and the SSM Parameters required for certain resources:

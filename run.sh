@@ -86,6 +86,7 @@ up() {
   up_states+=("$live_base_dir/eks-secrets/3-secrets")
   up_states+=("$live_base_dir/monitoring")
   up_states+=("$live_base_dir/eks-config")
+  up_states+=("$live_base_dir/tailscale/subnet-router")
 
   for dir in "${up_states[@]}"; do
     cd $dir
@@ -104,6 +105,7 @@ down() {
   # states that need to have extra steps should for teardown should include a pre_teardown.sh
   # this will automatically run before the terraform destroy is applied
   down_states=()
+  down_states+=("$live_base_dir/tailscale/subnet-router")
   down_states+=("$live_base_dir/eks-config")
   down_states+=("$live_base_dir/monitoring")
   down_states+=("$live_base_dir/eks-secrets/3-secrets")
@@ -123,7 +125,7 @@ down() {
   # kubectl used for managing additional resources that Terraform may not be able to interact with
   # namely in pre_teardown.sh scripts associated with each state
   # aws credentials and/or profile should be specified with environment variables
-  aws eks update-kubeconfig --region $kube_cluster_region --name $kube_cluster_name
+  aws eks update-kubeconfig --region $kube_cluster_region --name $kube_cluster_name 
 
   for dir in "${down_states[@]}"; do
     cd $dir

@@ -34,7 +34,6 @@ data "aws_eks_cluster_auth" "this" {
   name = local.cluster_name
 }
 
-
 data "terraform_remote_state" "external_secrets" {
   backend = "local"
 
@@ -67,13 +66,25 @@ data "aws_ssm_parameter" "tailscale_api_key" {
   name = data.terraform_remote_state.ssm_secrets.outputs.tailscale_api_key_ssm_name
 }
 
+data "aws_ssm_parameter" "tailscale_oauth_client_id" {
+  name = data.terraform_remote_state.ssm_secrets.outputs.tailscale_oauth_client_id_ssm_name
+}
+
+data "aws_ssm_parameter" "tailscale_oauth_client_secret" {
+  name = data.terraform_remote_state.ssm_secrets.outputs.tailscale_oauth_client_secret_ssm_name
+}
+
 data "aws_iam_policy_document" "external_secrets" {
   statement {
     effect = "Allow"
     actions = [
       "ssm:GetParameter*"
     ]
-    resources = [data.aws_ssm_parameter.tailscale_api_key.arn]
+    resources = [
+      data.aws_ssm_parameter.tailscale_api_key.arn,
+      data.aws_ssm_parameter.tailscale_oauth_client_id.arn,
+      data.aws_ssm_parameter.tailscale_oauth_client_secret.arn,
+    ]
   }
   statement {
     effect    = "Allow"
@@ -92,33 +103,45 @@ resource "aws_iam_role_policy_attachment" "external_secrets" {
   policy_arn = aws_iam_policy.external_secrets.arn
 }
 
-
-# Tailscale API Key
+# Tailscale credentials
 resource "kubernetes_manifest" "tailscale" {
   manifest = {
     apiVersion = "external-secrets.io/v1beta1"
     kind       = "ExternalSecret"
     metadata = {
-      name      = "tailscale-api-key"
-      namespace = "default"
+      name      = "tailscale-${local.env}"
+      namespace = "default" # TODO: default for now, will probably change this shortly
     }
     spec = {
       secretStoreRef = {
         name = data.terraform_remote_state.clustersecretstore.outputs.clustersecretstore_name
         kind = "ClusterSecretStore"
       }
-      refreshInterval = "60s" # is set to 0 to prevent from being automatically updated
+      refreshInterval = "60s"
       target = {
         name           = "tailscale"
         creationPolicy = "Owner"
       }
       data = [
         {
-          secretKey = "api-key"
+          secretKey = "api_key"
           remoteRef = {
             key = data.aws_ssm_parameter.tailscale_api_key.name
           }
-      }]
+        },
+        {
+          secretKey = "oauth_client_id"
+          remoteRef = {
+            key = data.aws_ssm_parameter.tailscale_oauth_client_id.name
+          }
+        },
+        {
+          secretKey = "oauth_client_secret"
+          remoteRef = {
+            key = data.aws_ssm_parameter.tailscale_oauth_client_secret.name
+          }
+        }
+      ]
     }
   }
 }
