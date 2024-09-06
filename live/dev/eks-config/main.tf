@@ -49,7 +49,7 @@ locals {
   load_balancer_hostname             = kubernetes_ingress_v1.applications.status.0.load_balancer.0.ingress.0.hostname
   namespace                          = kubernetes_namespace_v1.applications.metadata[0].name
   region                             = var.region
-  prime_generator_python_app_name    = "prime-generator-python"
+  prime_generator_python_app_name    = "prime-generator-python-${local.env}"
   prime_generator_python_domain_name = "${local.prime_generator_python_app_name}.${local.domain_name}"
   public_subnet_ids                  = data.terraform_remote_state.vpc.outputs.public_subnet_ids
 }
@@ -194,23 +194,37 @@ resource "kubernetes_namespace_v1" "applications" {
   }
 }
 
-resource "helm_release" "prime_generator_python" {
-  name = "prime-generator-python"
+# resource "helm_release" "prime_generator_python" {
+#   name = "prime-generator-python"
 
-  repository = "./../../../charts"
-  chart      = "prime-generator-python"
-  version    = "0.1.0"
+#   repository = "./../../../charts"
+#   chart      = "prime-generator-python"
+#   version    = "0.1.0"
 
-  set {
-    name  = "image.name"
-    value = data.terraform_remote_state.global.outputs.prime_generator_python_ecr_url
-  }
-  set {
-    name  = "namespace"
-    value = "applications-${local.env}"
+#   set {
+#     name  = "image.name"
+#     value = data.terraform_remote_state.global.outputs.prime_generator_python_ecr_url
+#   }
+#   set {
+#     name  = "namespace"
+#     value = "applications-${local.env}"
+#   }
+# }
+
+module "prime_generator_python" {
+  source = "../../../modules/app"
+
+  name           = local.prime_generator_python_app_name
+  namespace      = local.namespace
+  image_name     = data.terraform_remote_state.global.outputs.prime_generator_python_ecr_url
+  image_tag      = "latest"
+  container_port = 8888
+  service_port   = 80
+  labels = {
+    app  = local.prime_generator_python_app_name
+    tier = "backend"
   }
 }
-
 
 data "aws_route53_zone" "this" {
   name = local.domain_name
@@ -287,7 +301,7 @@ resource "kubernetes_ingress_v1" "applications" {
         path {
           backend {
             service {
-              name = local.prime_generator_python_app_name
+              name = module.prime_generator_python.service_name
               port {
                 number = 80
               }

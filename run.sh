@@ -94,6 +94,7 @@ up() {
     if [ -f "$dir/secrets.tfvars" ]; then
       options="--var-file secrets.tfvars"
     fi
+    bash -c "terraform init"
     cmd="terraform apply $auto_approve $options"
     echo "Running \`$cmd\`"
     bash -c "$cmd"
