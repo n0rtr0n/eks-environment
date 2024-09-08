@@ -1,6 +1,10 @@
 # Local .terraform directories
 **/.terraform/*
 
+# state-specific sensitive values
+.env
+*.pem
+
 # .tfstate files
 *.tfstate
 *.tfstate.*
