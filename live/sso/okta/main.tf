@@ -24,14 +24,14 @@ locals {
   aws_app_id = data.okta_app.aws.id
 }
 
-resource "okta_group" "aws_users" {
-  name        = "AWS Users"
-  description = "AWS SSO - Users"
+resource "okta_group" "aws_read_only" {
+  name        = "AWS_SSO_ReadOnly"
+  description = "AWS SSO Read Only"
 }
 
 resource "okta_group" "aws_admins" {
-  name        = "AWS Admins"
-  description = "AWS SSO - Admins"
+  name        = "AWS_SSO_Admins"
+  description = "AWS SSO Admins"
 }
 
 # label must match the name that was configured in Okta app
@@ -45,6 +45,6 @@ resource "okta_app_group_assignments" "aws-admin" {
     id = okta_group.aws_admins.id
   }
   group {
-    id = okta_group.aws_users.id
+    id = okta_group.aws_read_only.id
   }
 }
