@@ -76,6 +76,27 @@ While the creation of groups can be managed by Terraform, automatically syncing 
 
 Fortunately, Push Groups can be configured to automatically sync Okta Groups with groups in the service provider based on rules (prefix, specific name, etc.). Navigate to the application details and configure the Push Groups within the "Push Groups" tab.
 
-## Usage
+## Provisioning
 
 Navigate to the `live/sso/okta` directory and run `./provision_okta.sh`. The environment configuration will automatically be applied. You will have an opportunity to review the changes.
+
+## CLI Access
+
+To use the AWS CLI with AWS SSO, it must be configured locally. To do so, start with:
+
+`aws configure sso`
+
+When prompted, enter the following:
+* *session name* - an optional identifier
+* *start URL* - the start URL for the AWS SSO instance
+* *region* - AWS region to start in
+* *registration scopes* - leave this as the default or use `sso:account:access`
+
+Additionally, you will be show the availabe accounts and roles available to you. When prompted, enter:
+* *default client region* - AWS region
+* *default output format* - leave blank or use `JSON`
+* *profile name* - the AWS profile to create locally
+
+When a profile is created, you may optionally set `AWS_PROFILE=<your_profile_name>` in your session or shell configuration to automatically use this CLI profile for SSO. When you re-authentication is required, you will be redirected to sign in through the configured identity provider before using this profile.
+
+For more information, see the [AWS Guide](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html#cli-configure-sso-configure).

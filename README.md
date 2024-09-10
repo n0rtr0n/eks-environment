@@ -86,6 +86,10 @@ ssh_public_key = "<your public ssh key>"
 
 This step will create a VPC, an EKS cluster with node workers, an external secrets operator to synchronize the secrets we created in the init step to the EKS cluster, a monitoring and logging stack, and deploy a sample application (prime-generator-python) with a small GitHub Actions pipeline.
 
+1. *SSO* - To connect an an identity provider for single sign-on, follow the guide at [https://github.com/n0rtr0n/eks-environment/tree/main/live/sso](https://github.com/n0rtr0n/eks-environment/tree/main/live/sso).
+
+This state will be unaffected by de-provisioning the the infrastructure, and many of the steps in the guide require manual setup in AWS and Okta. 
+
 ### Options
 
 `-a|--auto-approve` will automatically approve Terraform apply commands. Use only if you are confident that the configuration is correct.
