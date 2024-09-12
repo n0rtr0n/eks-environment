@@ -1,12 +1,3 @@
-locals {
-  env    = "dev"
-  region = "us-west-2"
-}
-
-data "aws_kms_alias" "default" {
-  name = "alias/aws/ssm"
-}
-
 resource "random_string" "secret_seed" {
   length  = 24
   special = true
@@ -24,7 +15,6 @@ resource "aws_ssm_parameter" "tailscale_api_key" {
     ignore_changes = [value]
   }
 }
-
 
 resource "aws_ssm_parameter" "tailscale_oauth_client_id" {
   name        = "/${local.env}/tailscale-oauth-client-id"

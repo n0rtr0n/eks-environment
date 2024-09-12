@@ -97,6 +97,11 @@ Additionally, you will be show the availabe accounts and roles available to you.
 * *default output format* - leave blank or use `JSON`
 * *profile name* - the AWS profile to create locally
 
-When a profile is created, you may optionally set `AWS_PROFILE=<your_profile_name>` in your session or shell configuration to automatically use this CLI profile for SSO. When you re-authentication is required, you will be redirected to sign in through the configured identity provider before using this profile.
+When a profile is created, you may optionally set `AWS_PROFILE=<your_profile_name>` in your session or shell configuration to automatically use this CLI profile for SSO. 
+
+When re-authentication is required, use the following command to log in to the identity provider and retrieve new session credentials:
+```
+aws sso login --profile <your_profile_name>
+```
 
 For more information, see the [AWS Guide](https://docs.aws.amazon.com/cli/latest/userguide/cli-configure-sso.html#cli-configure-sso-configure).

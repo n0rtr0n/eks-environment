@@ -1,96 +1,3 @@
-terraform {
-  required_providers {
-    aws = {
-      source  = "hashicorp/aws"
-      version = "~> 5.62"
-    }
-    kubernetes = {
-      source  = "hashicorp/kubernetes"
-      version = "~> 2.16.0"
-    }
-    helm = {
-      source  = "hashicorp/helm"
-      version = "~> 2.15.0"
-    }
-  }
-}
-
-data "aws_caller_identity" "current" {}
-
-data "terraform_remote_state" "eks" {
-  backend = "local"
-
-  config = {
-    path = "../eks-cluster/terraform.tfstate"
-  }
-}
-
-data "terraform_remote_state" "vpc" {
-  backend = "local"
-
-  config = {
-    path = "../vpc/terraform.tfstate"
-  }
-}
-
-data "terraform_remote_state" "global" {
-  backend = "local"
-
-  config = {
-    path = "../../global/terraform.tfstate"
-  }
-}
-
-data "aws_lb_hosted_zone_id" "this" {}
-locals {
-  cluster_name                       = data.terraform_remote_state.eks.outputs.eks_cluster_name
-  domain_name                        = var.domain_name
-  env                                = "dev"
-  load_balancer_hostname             = kubernetes_ingress_v1.applications.status.0.load_balancer.0.ingress.0.hostname
-  namespace                          = kubernetes_namespace_v1.applications.metadata[0].name
-  region                             = var.region
-  prime_generator_python_app_name    = "prime-generator-python-${local.env}"
-  prime_generator_python_domain_name = "${local.prime_generator_python_app_name}.${local.domain_name}"
-  public_subnet_ids                  = data.terraform_remote_state.vpc.outputs.public_subnet_ids
-}
-
-data "aws_eks_cluster" "this" {
-  name = local.cluster_name
-}
-
-data "aws_eks_cluster_auth" "this" {
-  name = local.cluster_name
-}
-
-provider "aws" {
-  region = local.region
-}
-
-# this allows us to authenticate to the k8s cluster directly through the IAM user running the Terraform
-# one less secret to manage!
-# requires AWS CLI
-provider "kubernetes" {
-  host                   = data.aws_eks_cluster.this.endpoint
-  cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
-  exec {
-    api_version = "client.authentication.k8s.io/v1beta1"
-    args        = ["eks", "get-token", "--cluster-name", data.aws_eks_cluster.this.id]
-    command     = "aws"
-  }
-}
-
-provider "helm" {
-  kubernetes {
-    host                   = data.aws_eks_cluster.this.endpoint
-    cluster_ca_certificate = base64decode(data.aws_eks_cluster.this.certificate_authority[0].data)
-    exec {
-      api_version = "client.authentication.k8s.io/v1beta1"
-      args        = ["eks", "get-token", "--cluster-name", data.aws_eks_cluster.this.id]
-      command     = "aws"
-    }
-  }
-}
-
 resource "helm_release" "metrics_server" {
   name       = "metrics-server"
   repository = "https://kubernetes-sigs.github.io/metrics-server/"
@@ -194,23 +101,6 @@ resource "kubernetes_namespace_v1" "applications" {
   }
 }
 
-# resource "helm_release" "prime_generator_python" {
-#   name = "prime-generator-python"
-
-#   repository = "./../../../charts"
-#   chart      = "prime-generator-python"
-#   version    = "0.1.0"
-
-#   set {
-#     name  = "image.name"
-#     value = data.terraform_remote_state.global.outputs.prime_generator_python_ecr_url
-#   }
-#   set {
-#     name  = "namespace"
-#     value = "applications-${local.env}"
-#   }
-# }
-
 module "prime_generator_python" {
   source = "../../../modules/app"
 
@@ -224,10 +114,6 @@ module "prime_generator_python" {
     app  = local.prime_generator_python_app_name
     tier = "backend"
   }
-}
-
-data "aws_route53_zone" "this" {
-  name = local.domain_name
 }
 
 resource "aws_route53_record" "prime_generator_python" {
